@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="stylesheet" href="todolist.css">
+</head>
+
+<body>
+<div class="orange">
+    <div class="box">
+        <h1>Todos</h1>
+        <p>温馨提示：回车添加任务，点击按钮delete删除全部任务</p>
+        <div class="add">
+              <input type="text" id="input-search" value="别玩了懒狗">
+              <div id="bbb" style="cursor: pointer;" >delete</div>
+        </div>
+        <ul id="todo-list">
+        </ul>
+    </div>
+</div>
+</body>
+<script src="js/todolist.js"></script>
+<script type="text/javascript" src="js/jquery.min.js"></script>
+<script src="../ajax/js/template-web.js"></script>
+<!--    任务列表模板-->
+<script type="text/html" id="taskTpl">
+    <!--   循环数组-->
+    {{each tasks}}
+    <li>
+        <div class="view">
+            <span class="content">{{$value.Content}}</span>
+            <button class="destroy" id="btn" data-id="{{$value.Id}}"></button>
+        </div>
+    </li>
+    {{/each}}
+</script>
+<script>
+    //用于存放任务列表的数组
+    var taskAry;
+    //选择任务列表存放容器 就是ul标签
+    var taskBox = $('#todo-list');
+    //添加任务的文本框
+    var taskInp = $('#input-search');
+
+    $(function (){
+        //获取数据 展示在页面中
+        $.ajax({
+            url:'http://47.113.187.45:8989/todo/index/selectAll',
+            type:'get',
+            dataType:"json",
+            success:function (response){
+                taskAry = response.content;
+                //拼接字符串 将拼接好的字符串显示在页面中
+                render();
+            }
+        })
+    });
+
+    //获取文本框 并且添加键盘抬起事件（按下回车就可以添加）
+    taskInp.on('keyup',function (event){
+        //如果用户敲击的是回车键
+        if(event.keyCode == 13) {
+            //判断用户是否在文本框中输入了任务名称
+            var taskName = $(this).val();
+            //如果用户没有在文本框中输入内容
+            if (taskName.trim().length == 0) {
+                alert('请输入任务名称');
+                //阻止代码向下执行
+                return;
+            }
+            let url = 'http://47.113.187.45:8989/todo/index/create';
+            //如果用户输入了内容 则向服务器端发送请求 添加任务
+            $.ajax({
+                type:'post',
+                url:url,
+                contentType:'application/json',
+                data:JSON.stringify({msg:taskName}),
+                success: function (response){
+                    taskInp.val('');
+
+                    //获取数据 展示在页面中
+                    $.ajax({
+                        url:'http://47.113.187.45:8989/todo/index/selectAll',
+                        type:'get',
+                        dataType:"json",
+                        success:function (response){
+                            console.log(response.content);
+                            taskAry = response.content;
+                            console.log(taskAry);
+                            //拼接字符串 将拼接好的字符串显示在页面中
+                            render();
+                        }
+                    })
+                }
+            })
+        }
+    });
+    //封装函数 拼接字符串 将拼接好的字符串显示在页面中
+    function render(){
+        //将数据和html拼接
+        var html = template('taskTpl',{
+            tasks:taskAry
+        });
+        console.log(html);
+        //将任务列表显示在页面中
+        taskBox.html(html);
+    }
+
+
+    //当用户点击删除按钮时触发ul标签身上的点击事件
+    taskBox.on('click','.destroy',function (){
+        //要删除的任务的id
+        var id = $(this).attr('data-id')
+        //向服务器端发送请求删除任务
+        $.ajax({
+            url:'http://47.113.187.45:8989/todo/index/delete/id=',
+            type:'delete',
+            success:function (response){
+                //从任务数组中找到已经删除掉的任务的索引
+                var index =  taskAry.findIndex(item => item.id == id);
+                //将任务从数组中删除
+                taskAry.splice(index,1);
+                //重新将任务数组中的元素显示在页面中
+                render();
+
+            }
+        })
+        $(this).parent().parent().remove();
+    })
+
+
+
+    //删除全部
+    var taskDel = $('#bbb');
+    taskDel.on('click',function (){
+        $.ajax({
+            url:'http://47.113.187.45:8989/todo/index/deleteAll',
+            type:'delete',
+            success:function (response){
+
+            }
+        })
+        $('#todo-list').html('');
+    })
+</script>
+</html>
